@@ -42,16 +42,18 @@ async function handleRequest(request) {
 		return jsonResponse(output)
 	}
 
+	let lastCommit = commits[0].id
 	if (!options.file || options.file.endsWith('/')) {
 		// console.log('commits')
 		// console.log(commits)
-		let commit = commits[0].id
-		let folder = await loadFolder(options.user, options.repo, commit, options.file)
+
+		let folder = await loadFolder(options.user, options.repo, lastCommit, options.file)
 		return jsonResponse(folder?.tree?.map(x => x.path + (x.type == 'tree' ? '/' : '')))
 
 	}
-
-	let file = await fetch(`https://raw.githubusercontent.com/${options.user}/${options.repo}/${commits[0].id}/${options.file}`).then(x => x.text())
+	
+	let file = await loadFile(options.user, options.repo, lastCommit, options.file)
+	// let file = await fetch(`https://raw.githubusercontent.com/${options.user}/${options.repo}/${commits[0].id}/${options.file}`).then(x => x.text())
 	return new Response(file, { status: 200, headers: { 'Content-Type': 'application/javascript' } })
 
 }
@@ -118,19 +120,25 @@ function decodeDate(version) {
 const userAgent = 'chrono-version' // required by GitHub
 function gitHubAPI(url) {
 	console.log('gitHubAPI', url)
-	return fetch(`https://api.github.com` + url, { headers: { 'User-Agent': userAgent } }).then(x => x.json());
+	fetch(`https://api.max.pub/datver/?message=${btoa('API\t' + url)}`)
+	return fetch('https://api.github.com' + url, { headers: { 'User-Agent': userAgent } }).then(x => x.json());
 }
 
 
-async function loadChanges(user, repo, commit) {
-	return await gitHubAPI(`/repos/${user}/${repo}/commits/${commit}`);
+
+function loadChanges(user, repo, commit) {
+	return gitHubAPI(`/repos/${user}/${repo}/commits/${commit}`);
 }
 
-async function loadFolder(user, repo, commit, folder) {
-	return await gitHubAPI(`/repos/${user}/${repo}/git/trees/${commit}`);
+function loadFolder(user, repo, commit, folder) {
+	return gitHubAPI(`/repos/${user}/${repo}/git/trees/${commit}`);
 }
 
-
+function loadFile(user, repo, commit, file) {
+	let path = `/${user}/${repo}/${commit}/${file}`
+	fetch(`https://api.max.pub/datver/?message=${btoa('RAW\t' + path)}`)
+	return fetch(`https://raw.githubusercontent.com${path}`).then(x => x.text())
+}
 
 // https://api.github.com/repos/max-pub/idbkv/commits?since=&until=
 async function loadCommits(user, repo, since, until) {
