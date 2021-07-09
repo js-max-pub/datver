@@ -7,6 +7,7 @@ const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', '
 
 
 addEventListener('fetch', event => {
+	console.log('\n\n new request')
 	event.respondWith(handleRequest(event.request))
 })
 
@@ -30,15 +31,24 @@ async function handleRequest(request) {
 	}
 
 
-	var commits = await loadCommits(options.user, options.repo, options.since, options.until);
+	var commits = await loadCommits(options.user, options.repo, options.date?.since, options.date?.until);
 	// console.log('commits', commits)
 	if (!commits)
 		return jsonResponse({ error: 'no commits found' })
 
-	if (!options.file) {
+	if (!options.date?.parts?.year) {
 		let output = [... new Set(commits.map(x => encodeDate(x.date)).flat())].sort().reverse()
 		// let output = [...new Set(commits.flatMap(x => encodeDate(x.date)))]
 		return jsonResponse(output)
+	}
+
+	if (!options.file || options.file.endsWith('/')) {
+		// console.log('commits')
+		// console.log(commits)
+		let commit = commits[0].id
+		let folder = await loadFolder(options.user, options.repo, commit, options.file)
+		return jsonResponse(folder?.tree?.map(x => x.path + (x.type == 'tree' ? '/' : '')))
+
 	}
 
 	let file = await fetch(`https://raw.githubusercontent.com/${options.user}/${options.repo}/${commits[0].id}/${options.file}`).then(x => x.text())
@@ -54,10 +64,38 @@ function jsonResponse(o) {
 }
 
 
-
-function encodeDate(string) {
-	string = string.slice(2)
-	return [string, string.slice(0,2), string.slice(0,5)];
+function isoDate(d) {
+	return d.getFullYear()
+		+ '-' + String(d.getMonth() + 1).padStart(2, '0')
+		+ '-' + String(d.getDate()).padStart(2, '0')
+}
+function encodeDate(string) { // '2021-03-05' -> ['21', '21-03', '21-03-05']
+	return [string.slice(2), string.slice(2, 4), string.slice(2, 7)];
+}
+function decodeDate(version) {
+	var parts = {
+		year: ('20' + version.slice(0, 2)) * 1,
+		month: version.slice(3, 5) * 1 || null,
+		day: version.slice(6, 8) * 1 || null,
+	}
+	// console.log('make', parts.year, parts.month ? parts.month - 1 : 0, parts.day ?? 1)
+	// let root = new Date(parts.year, parts.month ? parts.month - 1 : 0, parts.day ?? 1)
+	// console.log('decodeDate', root, isoDate(root))
+	var since = new Date(parts.year, parts.month ? parts.month - 1 : 0, parts.day ?? 1, 0, 0, 0)
+	// console.log('since', since, isoDate(since))
+	var until = new Date(parts.year, parts.day ? (parts.month - 1 || 11) : (parts.month || 12), parts.day || 0, 23, 59, 59);
+	return { parts, since: isoDate(since), until: isoDate(until) }
+	// console.log('date',date)
+	// if (date.month.length) {
+	// 	if (date.month.length == 1)
+	// 		date.month = date.month.charCodeAt() - 96
+	// 	else if (date.month.length == 3)
+	// 		date.month = months.indexOf(date.month) + 1;
+	// 	else date.month = null;
+	// }
+	// var since = new Date(root.getFullYear(), date.month - 1 || 0, date.day || 1, 0, 0, 0);
+	// var until = new Date(date.year, date.day ? (date.month - 1 || 11) : (date.month || 12), date.day || 0, 23, 59, 59);
+	// return { ...date, since, until }
 }
 
 // function encodeDate(string) {
@@ -78,24 +116,27 @@ function encodeDate(string) {
 
 
 const userAgent = 'chrono-version' // required by GitHub
-
-
-
-
 function gitHubAPI(url) {
 	console.log('gitHubAPI', url)
 	return fetch(`https://api.github.com` + url, { headers: { 'User-Agent': userAgent } }).then(x => x.json());
 }
 
 
+async function loadChanges(user, repo, commit) {
+	return await gitHubAPI(`/repos/${user}/${repo}/commits/${commit}`);
+}
+
+async function loadFolder(user, repo, commit, folder) {
+	return await gitHubAPI(`/repos/${user}/${repo}/git/trees/${commit}`);
+}
 
 
 
 // https://api.github.com/repos/max-pub/idbkv/commits?since=&until=
 async function loadCommits(user, repo, since, until) {
 	// console.log('load commits', user, repo, since, until)
-	since = since ? 'since=' + since.toISOString().slice(0, 19) : '';
-	until = until ? 'until=' + until.toISOString().slice(0, 19) : '';
+	since = since ? 'since=' + since : '' //.toISOString().slice(0, 19) : '';
+	until = until ? 'until=' + until : '' //.toISOString().slice(0, 19) : '';
 	var commits = await gitHubAPI(`/repos/${user}/${repo}/commits?${since}&${until}`);
 	if (!Array.isArray(commits)) return false;
 	//   console.log('comm',commits)
@@ -125,7 +166,7 @@ function parseRequest(request) {
 
 	if (parts.length == 0) return false;
 
-	if (parts[0][0] != '@') {
+	if (parts[0][0] != '@') { // search for paid top-level-repos
 		if (paid[parts[0]]) var [user, repo] = paid[parts[0]].split('/');
 		else return false;
 		parts = parts.slice(1);
@@ -136,26 +177,16 @@ function parseRequest(request) {
 	}
 	console.log('user/repo', user, repo);
 
-	if (parts[0]) {
-		var version = parts[0];
-		var date = {
-			year: ('20' + version.slice(0, 2)) * 1,
-			month: version.replace(/[^a-z]/g, ''),
-			day: version.slice(2).replace(/[^0-9]/g, '') * 1,
-		}
-		if (date.month.length) {
-			if (date.month.length == 1)
-				date.month = date.month.charCodeAt() - 96
-			else if (date.month.length == 3)
-				date.month = months.indexOf(date.month) + 1;
-			else date.month = null;
-		}
-		var since = new Date(date.year, date.month - 1 || 0, date.day || 1, 0, 0, 0);
-		var until = new Date(date.year, date.day ? (date.month - 1 || 11) : (date.month || 12), date.day || 0, 23, 59, 59);
+
+	if (parts[0]) { // parse date
+		var version = parts[0]
+		var date = decodeDate(parts[0])
+
 	}
-	console.log('date', date, since, until);
+	// console.log('date', date, since, until);
+	// console.log('since', '\n', since.toDateString(), '\n', since.toISOString(), '\n', since.toLocaleDateString(), '\n', since.toUTCString())
 	var file = parts.slice(1).join('/')
-	return { user, repo, version, date, since, until, file };
+	return { user, repo, version, date, file };
 }
 
 
