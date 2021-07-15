@@ -11,7 +11,12 @@
 // curl https://api.github.com/?access_token=OAUTH-TOKEN
 // Set Key & Secret for Server-2-Server communication
 // curl 'https://api.github.com/users/whatever?client_id=xxxx&client_secret=yyyy'
-
+function getLimit(response) {
+	let total = response.headers.get("x-ratelimit-limit")
+	let remaining = response.headers.get("x-ratelimit-remaining")
+	console.log("LIMIT", remaining * 1, '/', total * 1)
+	return { total, remaining }
+}
 export class GitHub {
 	constructor(userAgent, clientID, clientSecret) {
 		this.userAgent = userAgent // required by GitHub
@@ -37,20 +42,32 @@ export class GitHub {
 				'Authorization': 'Basic ' + btoa(this.id + ":" + this.secret)
 			}
 		});
-		let limit = response.headers.get("x-ratelimit-limit")
-		let remaining = response.headers.get("x-ratelimit-remaining")
-
-		console.log("LIMIT", remaining * 1, '/', limit * 1)
-		console.log("STATUS",response.status)
-		this.logger?.log(`${remaining.padStart(4,' ')}/${limit}   ${response.status}   ${name}`, path + '?' + queryString)
+		let limit = getLimit(response)
+		// console.log("STATUS", response.status)
+		// this.logger?.log(`${remaining.padStart(4, ' ')}/${limit}   ${response.status}   ${name}`, path + '?' + queryString)
+		this.logger?.log({
+			limit: limit.remaining + '/' + limit.total,
+			status: response.status,
+			name,
+			path: path + '?' + queryString
+		})
 
 		return await response.json()
 	}
-	file(user, repo, commit, file) {
+	async file(user, repo, commit, file) {
 		let path = `/${user}/${repo}/${commit}/${file}`
-		this.logger?.log('FILE', path)
+		// this.logger?.log('FILE', path)
+
 		// fetch(`https://api.max.pub/datver/?message=${btoa('RAW\t' + path)}`)
-		return fetch(`https://raw.githubusercontent.com${path}`).then(x => x.text())
+		let response = await fetch(`https://raw.githubusercontent.com${path}`)
+		let limit = getLimit(response)
+		this.logger?.log({
+			limit: limit.remaining + '/' + limit.total,
+			status: response.status,
+			name: 'FILE',
+			path: path + '?' + queryString
+		})
+		return await response.text()
 	}
 
 
