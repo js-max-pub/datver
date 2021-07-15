@@ -22,10 +22,16 @@ export class GitHub {
 		this.userAgent = userAgent // required by GitHub
 		this.id = clientID
 		this.secret = clientSecret
-		console.log("github", this.id, this.secret)
+		// console.log("github", this.id, this.secret)
 		// this.token = token
 	}
-
+	get headers() {
+		return {
+			'User-Agent': this.userAgent,
+			// 'Authorization': 'token ' + this.token
+			'Authorization': 'Basic ' + btoa(this.id + ":" + this.secret)
+		}
+	}
 	async API(path, options = {}, name = 'API') {
 		console.log('gitHubAPI', path, options)
 		// options.access_token = this.token
@@ -36,11 +42,7 @@ export class GitHub {
 		// fetch(`https://api.max.pub/datver/?message=${btoa('API\t' + url)}`)
 		// console.log("API", 'https://api.github.com' + path + '?' + queryString)
 		let response = await fetch('https://api.github.com' + path + '?' + queryString, {
-			headers: {
-				'User-Agent': this.userAgent,
-				// 'Authorization': 'token ' + this.token
-				'Authorization': 'Basic ' + btoa(this.id + ":" + this.secret)
-			}
+			headers: { ... this.headers }
 		});
 		let limit = getLimit(response)
 		// console.log("STATUS", response.status)
@@ -56,15 +58,12 @@ export class GitHub {
 	}
 	async file(user, repo, commit, file) {
 		let path = `/${user}/${repo}/${commit}/${file}`
+		console.log('gitHubFile', path)
 		// this.logger?.log('FILE', path)
 
 		// fetch(`https://api.max.pub/datver/?message=${btoa('RAW\t' + path)}`)
 		let response = await fetch(`https://raw.githubusercontent.com${path}`, {
-			headers: {
-				'User-Agent': this.userAgent,
-				// 'Authorization': 'token ' + this.token
-				'Authorization': 'Basic ' + btoa(this.id + ":" + this.secret)
-			}
+			headers: { ... this.headers }
 		})
 		let limit = getLimit(response)
 		this.logger?.log({

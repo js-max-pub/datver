@@ -6,7 +6,7 @@ import { Logger } from './logger.js'
 
 
 addEventListener('fetch', event => {
-	console.log('\n\n new request', event.request.headers.get("x-forwarded-for"))
+	console.log('\n\n new request')
 	event.respondWith(requestHandler(event.request))
 })
 
@@ -63,7 +63,7 @@ async function requestHandler(webRequest) {
 	if (request.tag)
 		commits = (await github.tags(request.user, request.repo)).filter(x => x.tag.startsWith(request.version))
 
-	console.log('commits', commits[0])
+	// console.log('lastCommit', commits[0])
 	let lastCommit = commits[0]?.id
 	if (!request.file || request.file.endsWith('/')) {
 		// console.log('commits')
@@ -89,7 +89,7 @@ function requestParser(webRequest) {
 	// let [user, repo, version, file] = path.split('/').filter(x => x.trim());
 	// console.log('vars', user, repo, version, file);
 	let parts = path.split('/').filter(x => x.trim());
-	console.log('requestParser', parts);
+	// console.log('requestParser', parts);
 
 	if (parts.length == 0) return {}
 
