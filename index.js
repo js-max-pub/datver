@@ -35,18 +35,16 @@ async function requestHandler(webRequest) {
 	}
 
 
-	var commits = await github.commits(request.user, request.repo, request.date?.since, request.date?.until);
 	// console.log('commits', commits)
 	if (!commits)
 		return jsonResponse({ error: 'no commits found' })
 
-	if (!request.date?.parts?.year) {
+	if (!request.version) {
 		// '2021-03-05' -> ['21', '21-03', '21-03-05']
 		let encodeDate = s => [s.slice(0), s.slice(0, 4), s.slice(0, 7)];
 
-		// let output = [... new Set(commits.map(x => encodeDate(x.date)).flat())].sort().reverse()
-		// let output = [...new Set(commits.flatMap(x => encodeDate(x.date)))]
 		let tags = await github.tags(request.user, request.repo)
+		let commits = await github.commits(request.user, request.repo);
 		return jsonResponse({
 			// dates: encodeDates(commits.map(x => x.date)),
 			dates: [... new Set(commits.map(x => encodeDate(x.date)).flat())].sort().reverse(),
@@ -54,7 +52,14 @@ async function requestHandler(webRequest) {
 		})
 	}
 
-	let lastCommit = commits[0].id
+	var commits = [];
+	if (request.date)
+		commits = await github.commits(request.user, request.repo, request.date?.since, request.date?.until);
+	if (request.tag)
+		commits = await await github.tags(request.user, request.repo)
+
+	console.log('commits', commits)
+	let lastCommit = commits[0]?.id
 	if (!request.file || request.file.endsWith('/')) {
 		// console.log('commits')
 		// console.log(commits)
