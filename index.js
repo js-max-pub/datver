@@ -27,13 +27,13 @@ async function requestHandler(webRequest) {
 	console.log('request', request);
 
 	if (!request.user) {
-		return jsonResponse({ error: 'parameters missing', syntax: '/@user/repo/version/file' })
+		return jsonResponse({ error: 'parameters missing', syntax: '/@user/repo/version/file', ip: webRequest.headers.get("x-forwarded-for") })
 	}
 
 	if (!request.repo) {
 		let repos = await github.repos(request.user)
 		if (!Array.isArray(repos))
-			return jsonResponse({ error: 'no repos found', ip: webRequest.headers.get("x-forwarded-for") })
+			return jsonResponse({ error: 'no repos found' })
 		// console.log('repos', repos)
 		return jsonResponse(repos.map(x => x.name))
 	}
