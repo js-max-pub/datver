@@ -47,7 +47,7 @@ async function requestHandler(webRequest) {
 
 		let tags = await github.tags(request.user, request.repo)
 		let commits = await github.commits(request.user, request.repo);
-		// console.log("VERSIONS", commits)
+		console.log("VERSIONS", commits)
 		return jsonResponse({
 			// dates: encodeDates(commits.map(x => x.date)),
 			dates: [... new Set(commits.map(x => encodeDate(x.date)).flat())].sort().reverse(),

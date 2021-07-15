@@ -46,6 +46,7 @@ export class GitHub {
 	// https://api.github.com/repos/giampaolo/psutil/tags
 	async tags(user, repo) {
 		let commits = await this.API(`/repos/${user}/${repo}/tags`, { per_page: 100 }, 'TAGS')
+		if (!Array.isArray(commits)) return [];
 		return commits?.map(x => ({
 			id: x.commit.sha,
 			tag: x.name,
@@ -55,13 +56,13 @@ export class GitHub {
 	// https://api.github.com/repos/max-pub/idbkv/commits?since=&until=
 	async commits(user, repo, since, until) {
 		// console.log('load commits', user, repo, since, until)
-		let options = {}
+		let options = { per_page: 100 }
 		if (since) options.since = since
 		if (until) options.until = until
 		// since = since ? 'since=' + since : '' //.toISOString().slice(0, 19) : '';
 		// until = until ? 'until=' + until : '' //.toISOString().slice(0, 19) : '';
 		var commits = await this.API(`/repos/${user}/${repo}/commits`, options, 'COMMITS');
-		if (!Array.isArray(commits)) return false;
+		if (!Array.isArray(commits)) return [];
 		//   console.log('comm',commits)
 		// commits = JSON.parse(commits);
 		return commits?.map(x => ({
