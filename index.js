@@ -1,29 +1,33 @@
-const paid = {
-	idbkv: 'max-pub/idbkv'
-}
+import paid from './paid.js'
+import { GitHub } from './github.js';
+import { Logger } from './logger.js'
 
-const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
 
 
 addEventListener('fetch', event => {
 	console.log('\n\n new request')
-	event.respondWith(handleRequest(event.request))
+	event.respondWith(requestHandler(event.request))
 })
 
 
 
 
-async function handleRequest(request) {
 
-	let options = parseRequest(request);
-	console.log('options', options);
 
-	if (!options || !options.user)
+async function requestHandler(webRequest) {
+	let github = new GitHub("dateVersioning")
+	github.logger = new Logger(webRequest)
+
+	let request = requestParser(webRequest);
+	console.log('request', request);
+
+	if (!request.user) {
 		return jsonResponse({ error: 'parameters missing', syntax: '/@user/repo/version/file' })
+	}
 
-	if (!options.repo) {
-		let repos = await gitHubAPI(`/users/${options.user}/repos?per_page=100`)
+	if (!request.repo) {
+		let repos = await github.repos(request.user)
 		if (!Array.isArray(repos))
 			return jsonResponse({ error: 'no repos found' })
 		// console.log('repos', repos)
@@ -31,28 +35,36 @@ async function handleRequest(request) {
 	}
 
 
-	var commits = await loadCommits(options.user, options.repo, options.date?.since, options.date?.until);
+	var commits = await github.commits(request.user, request.repo, request.date?.since, request.date?.until);
 	// console.log('commits', commits)
 	if (!commits)
 		return jsonResponse({ error: 'no commits found' })
 
-	if (!options.date?.parts?.year) {
-		let output = [... new Set(commits.map(x => encodeDate(x.date)).flat())].sort().reverse()
+	if (!request.date?.parts?.year) {
+		// '2021-03-05' -> ['21', '21-03', '21-03-05']
+		let encodeDate = s => [s.slice(0), s.slice(0, 4), s.slice(0, 7)];
+
+		// let output = [... new Set(commits.map(x => encodeDate(x.date)).flat())].sort().reverse()
 		// let output = [...new Set(commits.flatMap(x => encodeDate(x.date)))]
-		return jsonResponse(output)
+		let tags = await github.tags(request.user, request.repo)
+		return jsonResponse({
+			// dates: encodeDates(commits.map(x => x.date)),
+			dates: [... new Set(commits.map(x => encodeDate(x.date)).flat())].sort().reverse(),
+			tags: tags.map(x => x.tag)
+		})
 	}
 
 	let lastCommit = commits[0].id
-	if (!options.file || options.file.endsWith('/')) {
+	if (!request.file || request.file.endsWith('/')) {
 		// console.log('commits')
 		// console.log(commits)
 
-		let folder = await loadFolder(options.user, options.repo, lastCommit, options.file)
+		let folder = await github.folder(request.user, request.repo, lastCommit, request.file)
 		return jsonResponse(folder?.tree?.map(x => x.path + (x.type == 'tree' ? '/' : '')))
 
 	}
-	
-	let file = await loadFile(options.user, options.repo, lastCommit, options.file)
+
+	let file = await github.file(request.user, request.repo, lastCommit, request.file)
 	// let file = await fetch(`https://raw.githubusercontent.com/${options.user}/${options.repo}/${commits[0].id}/${options.file}`).then(x => x.text())
 	return new Response(file, { status: 200, headers: { 'Content-Type': 'application/javascript' } })
 
@@ -60,33 +72,123 @@ async function handleRequest(request) {
 
 
 
+function requestParser(webRequest) {
+	// let options = {};
+	let path = new URL(webRequest.url).pathname;
+	// console.log('path', path);
+	// let [user, repo, version, file] = path.split('/').filter(x => x.trim());
+	// console.log('vars', user, repo, version, file);
+	let parts = path.split('/').filter(x => x.trim());
+	console.log('requestParser', parts);
+
+	if (parts.length == 0) return {}
+
+	if (parts[0][0] != '@') { // search for paid top-level-repos
+		if (paid[parts[0]]) var [user, repo] = paid[parts[0]].split('/');
+		else return false;
+		parts = parts.slice(1);
+	} else {
+		var [user, repo] = parts
+		user = user.slice(1) // remove the "@"
+		parts = parts.slice(2); // rest after user/repo/
+	}
+	console.log('user/repo', user, repo);
+
+
+	// if (parts[0]) { // parse version
+	// 	var version = parts[0]
+	// 	var  = decodeVersion(parts[0])
+	// 	// var semver = decodeVers
+
+	// }
+	// console.log('date', date, since, until);
+	// console.log('since', '\n', since.toDateString(), '\n', since.toISOString(), '\n', since.toLocaleDateString(), '\n', since.toUTCString())
+	var file = parts.slice(1).join('/')
+	return { user, repo, version: parts[0], ...decodeVersion(parts[0]), file };
+}
+
+
+
+
+
+
 
 function jsonResponse(o) {
-	return new Response(JSON.stringify(o, null, '\t'), { status: 200, headers: { 'Content-Type': 'application/json' } })
+	return new Response(JSON.stringify(o, null, '\t'), {
+		status: 200,
+		headers: { 'Content-Type': 'application/json' }
+	})
 }
 
 
-function isoDate(d) {
-	return d.getFullYear()
-		+ '-' + String(d.getMonth() + 1).padStart(2, '0')
-		+ '-' + String(d.getDate()).padStart(2, '0')
-}
-function encodeDate(string) { // '2021-03-05' -> ['21', '21-03', '21-03-05']
-	return [string.slice(2), string.slice(2, 4), string.slice(2, 7)];
-}
-function decodeDate(version) {
-	var parts = {
-		year: ('20' + version.slice(0, 2)) * 1,
-		month: version.slice(3, 5) * 1 || null,
-		day: version.slice(6, 8) * 1 || null,
+
+
+const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+function decodeVersion(version) {
+	if (!version?.trim()) return {}
+	if (version.includes('.') || version.length < 4) { // it's a tag
+		let parts = version.split('.')
+		let number = x => x ? x * 1 : null
+		return { tag: { major: number(parts[0]), minor: number(parts[1]), patch: number(parts[2]) } }
+	} else { // it's a date
+		let isoDate = d => d.getFullYear()
+			+ '-' + String(d.getMonth() + 1).padStart(2, '0')
+			+ '-' + String(d.getDate()).padStart(2, '0')
+		let parts = {
+			year: (version.slice(0, 4)) * 1,
+			month: version.slice(5, 7) * 1 || null,
+			day: version.slice(8, 10) * 1 || null,
+		}
+		var since = new Date(parts.year, parts.month ? parts.month - 1 : 0, parts.day ?? 1, 0, 0, 0)
+		// console.log('since', since, isoDate(since))
+		var until = new Date(parts.year, parts.day ? (parts.month - 1 || 11) : (parts.month || 12), parts.day || 0, 23, 59, 59);
+		return { date: { ...parts, since: isoDate(since), until: isoDate(until) } }
 	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// function encodeDates(dates) {
+// 	// '2021-03-05' -> ['21', '21-03', '21-03-05']
+// 	let output = [... new Set(dates.map(s => [s.slice(0), s.slice(0, 4), s.slice(0, 7)]).flat())].sort().reverse()
+// 	// for (let i = output.length - 1; i >= 0; i--) {
+// 	// 	// 	for(let a = output[i]; )
+// 	// 	let a = output[i]
+// 	// 	for (let j in months) {
+// 	// 		// console.log('replace', j, `-${String(j * 1 + 1).padStart(2, '0')}-`)
+// 	// 		a = a.replace(`-${String(j * 1 + 1).padStart(2, '0')}-`, months[j])
+// 	// 		if (a.length < 8) a = a.replace(`-${String(j * 1 + 1).padStart(2, '0')}`, months[j])
+// 	// 	}
+// 	// 	console.log(a)
+// 	// 	if (a != output[i]) output.splice(i + 1, 0, a)
+
+// 	// 	// 	let b = a.
+// 	// 	// 	let encodeDate = s => [s.slice(0), s.slice(0, 4), s.slice(0, 7)];
+
+// 	// }
+// 	return output
+// }
+
+
 	// console.log('make', parts.year, parts.month ? parts.month - 1 : 0, parts.day ?? 1)
 	// let root = new Date(parts.year, parts.month ? parts.month - 1 : 0, parts.day ?? 1)
 	// console.log('decodeDate', root, isoDate(root))
-	var since = new Date(parts.year, parts.month ? parts.month - 1 : 0, parts.day ?? 1, 0, 0, 0)
-	// console.log('since', since, isoDate(since))
-	var until = new Date(parts.year, parts.day ? (parts.month - 1 || 11) : (parts.month || 12), parts.day || 0, 23, 59, 59);
-	return { parts, since: isoDate(since), until: isoDate(until) }
+
 	// console.log('date',date)
 	// if (date.month.length) {
 	// 	if (date.month.length == 1)
@@ -98,7 +200,7 @@ function decodeDate(version) {
 	// var since = new Date(root.getFullYear(), date.month - 1 || 0, date.day || 1, 0, 0, 0);
 	// var until = new Date(date.year, date.day ? (date.month - 1 || 11) : (date.month || 12), date.day || 0, 23, 59, 59);
 	// return { ...date, since, until }
-}
+
 
 // function encodeDate(string) {
 // 	// console.log('encodeDate', string)
@@ -117,85 +219,22 @@ function decodeDate(version) {
 
 
 
-const userAgent = 'chrono-version' // required by GitHub
-function gitHubAPI(url) {
-	console.log('gitHubAPI', url)
-	fetch(`https://api.max.pub/datver/?message=${btoa('API\t' + url)}`)
-	return fetch('https://api.github.com' + url, { headers: { 'User-Agent': userAgent } }).then(x => x.json());
-}
-
-
-
-function loadChanges(user, repo, commit) {
-	return gitHubAPI(`/repos/${user}/${repo}/commits/${commit}`);
-}
-
-function loadFolder(user, repo, commit, folder) {
-	return gitHubAPI(`/repos/${user}/${repo}/git/trees/${commit}`);
-}
-
-function loadFile(user, repo, commit, file) {
-	let path = `/${user}/${repo}/${commit}/${file}`
-	fetch(`https://api.max.pub/datver/?message=${btoa('RAW\t' + path)}`)
-	return fetch(`https://raw.githubusercontent.com${path}`).then(x => x.text())
-}
-
-// https://api.github.com/repos/max-pub/idbkv/commits?since=&until=
-async function loadCommits(user, repo, since, until) {
-	// console.log('load commits', user, repo, since, until)
-	since = since ? 'since=' + since : '' //.toISOString().slice(0, 19) : '';
-	until = until ? 'until=' + until : '' //.toISOString().slice(0, 19) : '';
-	var commits = await gitHubAPI(`/repos/${user}/${repo}/commits?${since}&${until}`);
-	if (!Array.isArray(commits)) return false;
-	//   console.log('comm',commits)
-	// commits = JSON.parse(commits);
-	return commits.map(x => ({
-		id: x.sha,
-		// url: commit[0].url,
-		date: x.commit.author.date.slice(0, 10),
-		time: x.commit.author.date.slice(11, 19),
-		// time: commit[0].commit.author.date,
-		message: x.commit.message,
-	}));
-}
 
 
 
 
 
-function parseRequest(request) {
-	// let options = {};
-	let path = new URL(request.url).pathname;
-	console.log('path', path);
-	// let [user, repo, version, file] = path.split('/').filter(x => x.trim());
-	// console.log('vars', user, repo, version, file);
-	let parts = path.split('/').filter(x => x.trim());
-	console.log('parts', parts);
-
-	if (parts.length == 0) return false;
-
-	if (parts[0][0] != '@') { // search for paid top-level-repos
-		if (paid[parts[0]]) var [user, repo] = paid[parts[0]].split('/');
-		else return false;
-		parts = parts.slice(1);
-	} else {
-		var [user, repo] = parts
-		user = user.slice(1)
-		parts = parts.slice(2);
-	}
-	console.log('user/repo', user, repo);
 
 
-	if (parts[0]) { // parse date
-		var version = parts[0]
-		var date = decodeDate(parts[0])
 
-	}
-	// console.log('date', date, since, until);
-	// console.log('since', '\n', since.toDateString(), '\n', since.toISOString(), '\n', since.toLocaleDateString(), '\n', since.toUTCString())
-	var file = parts.slice(1).join('/')
-	return { user, repo, version, date, file };
-}
+
+
+
+
+
+
+
+
 
 
 
