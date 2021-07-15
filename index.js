@@ -16,7 +16,9 @@ addEventListener('fetch', event => {
 
 
 async function requestHandler(webRequest) {
-	let github = new GitHub("dateVersioning")
+	// let github = new GitHub("dateVersioning", 'Iv1.bcda86033536796b', '69f5760a54098f0f9113dfc833f54ec52d3ff830')
+	let github = new GitHub("dateVersioning", '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')
+
 	github.logger = new Logger(webRequest)
 
 	let request = requestParser(webRequest);
@@ -36,8 +38,8 @@ async function requestHandler(webRequest) {
 
 
 	// console.log('commits', commits)
-	if (!commits)
-		return jsonResponse({ error: 'no commits found' })
+	// if (!commits)
+	// 	return jsonResponse({ error: 'no commits found' })
 
 	if (!request.version) {
 		// '2021-03-05' -> ['21', '21-03', '21-03-05']
@@ -45,6 +47,7 @@ async function requestHandler(webRequest) {
 
 		let tags = await github.tags(request.user, request.repo)
 		let commits = await github.commits(request.user, request.repo);
+		// console.log("VERSIONS", commits)
 		return jsonResponse({
 			// dates: encodeDates(commits.map(x => x.date)),
 			dates: [... new Set(commits.map(x => encodeDate(x.date)).flat())].sort().reverse(),
@@ -56,9 +59,9 @@ async function requestHandler(webRequest) {
 	if (request.date)
 		commits = await github.commits(request.user, request.repo, request.date?.since, request.date?.until);
 	if (request.tag)
-		commits = await await github.tags(request.user, request.repo)
+		commits = (await github.tags(request.user, request.repo)).filter(x => x.tag.startsWith(request.version))
 
-	console.log('commits', commits)
+	console.log('commits', commits[0])
 	let lastCommit = commits[0]?.id
 	if (!request.file || request.file.endsWith('/')) {
 		// console.log('commits')
@@ -97,7 +100,7 @@ function requestParser(webRequest) {
 		user = user.slice(1) // remove the "@"
 		parts = parts.slice(2); // rest after user/repo/
 	}
-	console.log('user/repo', user, repo);
+	// console.log('user/repo', user, repo);
 
 
 	// if (parts[0]) { // parse version

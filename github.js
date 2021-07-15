@@ -1,15 +1,26 @@
 
 
 export class GitHub {
-	constructor(userAgent) {
+	constructor(userAgent, token) {
 		this.userAgent = userAgent // required by GitHub
+		// this.username = username
+		// this.password = password
+		this.token = token
 	}
 
-	API(url, name = 'API') {
-		console.log('gitHubAPI', url)
-		this.logger?.log(name, url)
+	API(path, options = {}, name = 'API') {
+		console.log('gitHubAPI', path, options)
+		options.access_token = this.token
+		let queryString = new URLSearchParams(options).toString()
+		this.logger?.log(name, path + '?' + queryString)
 		// fetch(`https://api.max.pub/datver/?message=${btoa('API\t' + url)}`)
-		return fetch('https://api.github.com' + url, { headers: { 'User-Agent': this.userAgent } }).then(x => x.json());
+		// console.log("API", 'https://api.github.com' + path + '?' + queryString)
+		return fetch('https://api.github.com' + path + '?' + queryString, {
+			headers: {
+				'User-Agent': this.userAgent,
+				// 'Authorization': 'Basic ' + btoa(this.username + ":" + this.password)
+			}
+		}).then(x => x.json());
 	}
 	file(user, repo, commit, file) {
 		let path = `/${user}/${repo}/${commit}/${file}`
@@ -20,21 +31,21 @@ export class GitHub {
 
 
 	repos(user) {
-		return this.API(`/users/${user}/repos?per_page=100`)
+		return this.API(`/users/${user}/repos`, { per_page: 100 })
 	}
 	changes(user, repo, commit) {
 		return this.API(`/repos/${user}/${repo}/commits/${commit}`);
 	}
 
 	folder(user, repo, commit, folder) {
-		return this.API(`/repos/${user}/${repo}/git/trees/${commit}`, 'FOLDER');
+		return this.API(`/repos/${user}/${repo}/git/trees/${commit}`, {}, 'FOLDER');
 	}
 
 
 
 	// https://api.github.com/repos/giampaolo/psutil/tags
 	async tags(user, repo) {
-		let commits = await this.API(`/repos/${user}/${repo}/tags?per_page=100`, 'TAGS')
+		let commits = await this.API(`/repos/${user}/${repo}/tags`, { per_page: 100 }, 'TAGS')
 		return commits?.map(x => ({
 			id: x.commit.sha,
 			tag: x.name,
@@ -44,9 +55,12 @@ export class GitHub {
 	// https://api.github.com/repos/max-pub/idbkv/commits?since=&until=
 	async commits(user, repo, since, until) {
 		// console.log('load commits', user, repo, since, until)
-		since = since ? 'since=' + since : '' //.toISOString().slice(0, 19) : '';
-		until = until ? 'until=' + until : '' //.toISOString().slice(0, 19) : '';
-		var commits = await this.API(`/repos/${user}/${repo}/commits?${since}&${until}`, 'COMMITS');
+		let options = {}
+		if (since) options.since = since
+		if (until) options.until = until
+		// since = since ? 'since=' + since : '' //.toISOString().slice(0, 19) : '';
+		// until = until ? 'until=' + until : '' //.toISOString().slice(0, 19) : '';
+		var commits = await this.API(`/repos/${user}/${repo}/commits`, options, 'COMMITS');
 		if (!Array.isArray(commits)) return false;
 		//   console.log('comm',commits)
 		// commits = JSON.parse(commits);
