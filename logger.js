@@ -8,8 +8,9 @@ export class Logger {
 		console.log('log', x)
 		// let ip = this.request.headers.get('host')
 		const ip = this.request.headers.get("x-forwarded-for") ?? '';
-		console.log("IP", ip)
-		let body = [ip.padStart(16, ' '), x.limit.padStart(12, ' '), x.status, x.name.padEnd(8, ' '), x.path].join('\t')
+		// console.log("IP", ip)
+		//ip.padStart(16, ' '), 
+		let body = [x.limit.padStart(12, ' '), x.status, x.name.padEnd(8, ' '), x.path].join('    ')
 		console.log('body', body)
 		// var formData = new FormData();
 		// formData.append("test", 'jo');
