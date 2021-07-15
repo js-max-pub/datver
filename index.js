@@ -6,7 +6,7 @@ import { Logger } from './logger.js'
 
 
 addEventListener('fetch', event => {
-	console.log('\n\n new request')
+	console.log('\n\n new request', event.request.headers.get("x-forwarded-for"))
 	event.respondWith(requestHandler(event.request))
 })
 
@@ -33,7 +33,7 @@ async function requestHandler(webRequest) {
 	if (!request.repo) {
 		let repos = await github.repos(request.user)
 		if (!Array.isArray(repos))
-			return jsonResponse({ error: 'no repos found' })
+			return jsonResponse({ error: 'no repos found', ip: webRequest.headers.get("x-forwarded-for") })
 		// console.log('repos', repos)
 		return jsonResponse(repos.map(x => x.name))
 	}
