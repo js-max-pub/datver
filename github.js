@@ -59,7 +59,13 @@ export class GitHub {
 		// this.logger?.log('FILE', path)
 
 		// fetch(`https://api.max.pub/datver/?message=${btoa('RAW\t' + path)}`)
-		let response = await fetch(`https://raw.githubusercontent.com${path}`)
+		let response = await fetch(`https://raw.githubusercontent.com${path}`, {
+			headers: {
+				'User-Agent': this.userAgent,
+				// 'Authorization': 'token ' + this.token
+				'Authorization': 'Basic ' + btoa(this.id + ":" + this.secret)
+			}
+		})
 		let limit = getLimit(response)
 		this.logger?.log({
 			limit: limit.remaining + '/' + limit.total,
