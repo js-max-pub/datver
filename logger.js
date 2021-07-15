@@ -7,7 +7,8 @@ export class Logger {
 	async log(x = {}) {
 		// console.log('log', x)
 		let host = this.request.headers.get('host')
-		const ip = this.request.headers.get("x-forwarded-for") ?? '';
+		let ip = this.request.headers.get("cf-connecting-ip") ?? '';
+		if (!ip) ip = this.request.headers.get("x-forwarded-for") ?? '';
 		// console.log("IP", ip)
 		//ip.padStart(16, ' '), 
 		let body = [host.padEnd(12, ' '), ip.padEnd(16, ' '), x.limit.padStart(12, ' '), x.status, x.name.padEnd(8, ' '), x.path, JSON.stringify(Object.fromEntries(Array.from(this.request.headers)))].join('    ')
