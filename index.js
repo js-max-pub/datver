@@ -16,8 +16,18 @@ addEventListener('fetch', event => {
 
 
 async function requestHandler(webRequest) {
+	// console.log("ENVVV",Deno.env.get('datver_client_id'),)
 	// let github = new GitHub("dateVersioning", 'Iv1.bcda86033536796b', '69f5760a54098f0f9113dfc833f54ec52d3ff830')
-	let github = new GitHub("dateVersioning", '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')
+	let github = new GitHub("dateVersioning",
+		Deno.env.get('datver_client_id'),
+		Deno.env.get('datver_client_secret')
+	)
+	// '6847f8dcca0c57e82813',
+	// 	'70567406d5a71d56d9b393bd5eee9486ff34d4ff',
+	// 	// 'Iv1.bcda86033536796b',
+	// 	// '69f5760a54098f0f9113dfc833f54ec52d3ff830',
+	// 	'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'
+	// )
 
 	github.logger = new Logger(webRequest)
 
@@ -47,7 +57,7 @@ async function requestHandler(webRequest) {
 
 		let tags = await github.tags(request.user, request.repo)
 		let commits = await github.commits(request.user, request.repo);
-		console.log("VERSIONS", commits)
+		// console.log("VERSIONS", commits)
 		return jsonResponse({
 			// dates: encodeDates(commits.map(x => x.date)),
 			dates: [... new Set(commits.map(x => encodeDate(x.date)).flat())].sort().reverse(),

@@ -1,26 +1,50 @@
-
+// https://stackoverflow.com/questions/13394077/is-there-a-way-to-increase-the-api-rate-limit-or-to-bypass-it-altogether-for-git
+// In order to increase the API rate limit you might
+// authenticate yourself at Github via your OAuth2 token or
+// use a key/secret to increase the unauthenticated rate limit.
+// There are multiple ways of doing this:
+// Basic Auth + OAuth2Token
+// curl -u <token>:x-oauth-basic https://api.github.com/user
+// Set and Send OAuth2Token in Header
+// curl -H "Authorization: token OAUTH-TOKEN" https://api.github.com
+// Set and Send OAuth2Token as URL Parameter
+// curl https://api.github.com/?access_token=OAUTH-TOKEN
+// Set Key & Secret for Server-2-Server communication
+// curl 'https://api.github.com/users/whatever?client_id=xxxx&client_secret=yyyy'
 
 export class GitHub {
-	constructor(userAgent, token) {
+	constructor(userAgent, clientID, clientSecret) {
 		this.userAgent = userAgent // required by GitHub
-		// this.username = username
-		// this.password = password
-		this.token = token
+		this.id = clientID
+		this.secret = clientSecret
+		console.log("github", this.id, this.secret)
+		// this.token = token
 	}
 
-	API(path, options = {}, name = 'API') {
+	async API(path, options = {}, name = 'API') {
 		console.log('gitHubAPI', path, options)
-		options.access_token = this.token
+		// options.access_token = this.token
+		// options.client_id = this.username
+		// options.client_secret = this.password
 		let queryString = new URLSearchParams(options).toString()
-		this.logger?.log(name, path + '?' + queryString)
+		// this.logger?.log(name, path + '?' + queryString)
 		// fetch(`https://api.max.pub/datver/?message=${btoa('API\t' + url)}`)
 		// console.log("API", 'https://api.github.com' + path + '?' + queryString)
-		return fetch('https://api.github.com' + path + '?' + queryString, {
+		let response = await fetch('https://api.github.com' + path + '?' + queryString, {
 			headers: {
 				'User-Agent': this.userAgent,
-				// 'Authorization': 'Basic ' + btoa(this.username + ":" + this.password)
+				// 'Authorization': 'token ' + this.token
+				'Authorization': 'Basic ' + btoa(this.id + ":" + this.secret)
 			}
-		}).then(x => x.json());
+		});
+		let limit = response.headers.get("x-ratelimit-limit")
+		let remaining = response.headers.get("x-ratelimit-remaining")
+
+		console.log("LIMIT", remaining * 1, '/', limit * 1)
+		console.log("STATUS",response.status)
+		this.logger?.log(`${remaining.padStart(4,' ')}/${limit}   ${response.status}   ${name}`, path + '?' + queryString)
+
+		return await response.json()
 	}
 	file(user, repo, commit, file) {
 		let path = `/${user}/${repo}/${commit}/${file}`
