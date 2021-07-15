@@ -65,7 +65,7 @@ export class GitHub {
 			limit: limit.remaining + '/' + limit.total,
 			status: response.status,
 			name: 'FILE',
-			path: path + '?' + queryString
+			path
 		})
 		return await response.text()
 	}
