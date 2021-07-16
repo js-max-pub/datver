@@ -20,7 +20,7 @@ async function requestHandler(webRequest) {
 		Deno.env.get('datver_client_id'),
 		Deno.env.get('datver_client_secret')
 	)
-
+	// console.log("IP", webRequest)
 	github.logger = new Logger(webRequest)
 
 	let request = requestParser(webRequest);
@@ -29,7 +29,7 @@ async function requestHandler(webRequest) {
 	if (!request.user) {
 		return jsonResponse({
 			error: 'parameters missing', syntax: '/@user/repo/version/file',
-			ip: webRequest.headers.get("x-forwarded-for"), host: webRequest.headers.get('host'), 
+			ip: webRequest.headers.get("x-forwarded-for"), host: webRequest.headers.get('host'),
 			paid: paid.users[webRequest.headers.get('host')]
 		})
 	}
@@ -99,8 +99,10 @@ function requestParser(webRequest) {
 
 	if (parts[0][0] != '@') { // search for paid top-level-repos
 		let host = webRequest.headers.get('host')
+		// host = 'jsv.max.pub'
+		// console.log('check payment', parts[0])
 		if (paid.repos[parts[0]]) var [user, repo] = paid.repos[parts[0]].split('/');
-		if (paid.users[host]) var [user, repo] = [paid.users[host], part[0]]
+		else if (paid.users[host]) var [user, repo] = [paid.users[host], parts[0]]
 		else return false;
 		parts = parts.slice(1);
 	} else {
