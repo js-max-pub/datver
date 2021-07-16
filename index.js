@@ -94,7 +94,9 @@ function requestParser(webRequest) {
 	if (parts.length == 0) return {}
 
 	if (parts[0][0] != '@') { // search for paid top-level-repos
-		if (paid[parts[0]]) var [user, repo] = paid[parts[0]].split('/');
+		let host = webRequest.headers.get('host')
+		if (paid.repos[parts[0]]) var [user, repo] = paid.repos[parts[0]].split('/');
+		if (paid.users[host]) var [user, repo] = [paid.users[host], part[0]]
 		else return false;
 		parts = parts.slice(1);
 	} else {
