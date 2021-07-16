@@ -29,7 +29,8 @@ async function requestHandler(webRequest) {
 	if (!request.user) {
 		return jsonResponse({
 			error: 'parameters missing', syntax: '/@user/repo/version/file',
-			ip: webRequest.headers.get("x-forwarded-for"), host: webRequest.headers.get('host')
+			ip: webRequest.headers.get("x-forwarded-for"), host: webRequest.headers.get('host'), 
+			paid: paid.users[webRequest.headers.get('host')]
 		})
 	}
 
