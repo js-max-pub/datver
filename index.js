@@ -27,7 +27,10 @@ async function requestHandler(webRequest) {
 	console.log('request', request);
 
 	if (!request.user) {
-		return jsonResponse({ error: 'parameters missing', syntax: '/@user/repo/version/file', ip: webRequest.headers.get("x-forwarded-for") })
+		return jsonResponse({
+			error: 'parameters missing', syntax: '/@user/repo/version/file',
+			ip: webRequest.headers.get("x-forwarded-for"), host: webRequest.headers.get('host')
+		})
 	}
 
 	if (!request.repo) {
