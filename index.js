@@ -158,10 +158,10 @@ function decodeVersion(version) {
 			month: version.slice(5, 7) * 1 || null,
 			day: version.slice(8, 10) * 1 || null,
 		}
-		var since = new Date(parts.year, parts.month ? parts.month - 1 : 0, parts.day ?? 1, 0, 0, 0)
+		var since = new Date(parts.year, parts.month ? parts.month - 1 : 0, parts.day > 1 ? parts.day - 1 : 1, 0, 0, 0)
 		// console.log('since', since, isoDate(since))
 		var until = new Date(parts.year, parts.day ? (parts.month - 1 || 11) : (parts.month || 12), parts.day || 0, 23, 59, 59);
-		return { date: { ...parts, since: isoDate(since), until: isoDate(until) } }
+		return { date: { ...parts, since: isoDate(since) , until: isoDate(until)  } }
 	}
 }
 
