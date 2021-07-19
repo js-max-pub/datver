@@ -153,15 +153,23 @@ function decodeVersion(version) {
 		let isoDate = d => d.getFullYear()
 			+ '-' + String(d.getMonth() + 1).padStart(2, '0')
 			+ '-' + String(d.getDate()).padStart(2, '0')
+		version = version.toLowerCase()
+		for (let i in months)
+			version = version.replace(months[i], `-${i * 1 + 1}-`)
+		console.log('version', version)
+		let [y, m, d] = version.split('-')
 		let parts = {
-			year: (version.slice(0, 4)) * 1,
-			month: version.slice(5, 7) * 1 || null,
-			day: version.slice(8, 10) * 1 || null,
+			year: y * 1,
+			month: m * 1 || null,
+			day: d * 1 || null,
+			// year: (version.slice(0, 4)) * 1,
+			// month: version.slice(5, 7) * 1 || null,
+			// day: version.slice(8, 10) * 1 || null,
 		}
 		var since = new Date(parts.year, parts.month ? parts.month - 1 : 0, parts.day > 1 ? parts.day - 1 : 1, 0, 0, 0)
 		// console.log('since', since, isoDate(since))
 		var until = new Date(parts.year, parts.day ? (parts.month - 1 || 11) : (parts.month || 12), parts.day || 0, 23, 59, 59);
-		return { date: { ...parts, since: isoDate(since) , until: isoDate(until)  } }
+		return { date: { ...parts, since: isoDate(since), until: isoDate(until) } }
 	}
 }
 
