@@ -49,14 +49,14 @@ async function requestHandler(webRequest) {
 
 	if (!request.version) {
 		// '2021-03-05' -> ['21', '21-03', '21-03-05']
-		let encodeDate = s => [s.slice(0), s.slice(0, 4), s.slice(0, 7)];
+		// let encodeDate = s => [s.slice(0), s.slice(0, 4), s.slice(0, 7)];
 
 		let tags = await github.tags(request.user, request.repo)
 		let commits = await github.commits(request.user, request.repo);
 		// console.log("VERSIONS", commits)
 		return jsonResponse({
-			// dates: encodeDates(commits.map(x => x.date)),
-			dates: [... new Set(commits.map(x => encodeDate(x.date)).flat())].sort().reverse(),
+			dates: [... new Set(commits.map(x => x.date))],
+			// dates: [... new Set(commits.map(x => encodeDate(x.date)).flat())].sort().reverse(),
 			tags: tags.map(x => x.tag)
 		})
 	}
