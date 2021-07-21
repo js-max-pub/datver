@@ -32,7 +32,7 @@ export class GitHub {
 			'Authorization': 'Basic ' + btoa(this.id + ":" + this.secret)
 		}
 	}
-	async API(path, options = {}, name = 'API') {
+	async API(path, options = {}, log = {}) {
 		console.log('gitHubAPI', path, options)
 		// options.access_token = this.token
 		// options.client_id = this.username
@@ -50,7 +50,7 @@ export class GitHub {
 		this.logger?.log({
 			limit: limit.remaining + '/' + limit.total,
 			status: response.status,
-			name,
+			...log,
 			path: path + '?' + queryString
 		})
 
@@ -69,7 +69,9 @@ export class GitHub {
 		this.logger?.log({
 			limit: limit.remaining + '/' + limit.total,
 			status: response.status,
-			name: 'FILE',
+			user,
+			repo,
+			action: 'FILE',
 			path
 		})
 		return await response.text()
@@ -77,21 +79,21 @@ export class GitHub {
 
 
 	repos(user) {
-		return this.API(`/users/${user}/repos`, { per_page: 100 })
+		return this.API(`/users/${user}/repos`, { per_page: 100 }, { user, action: 'REPOS' })
 	}
 	changes(user, repo, commit) {
-		return this.API(`/repos/${user}/${repo}/commits/${commit}`);
+		return this.API(`/repos/${user}/${repo}/commits/${commit}`, { user, repo, action: 'CHANGES' });
 	}
 
 	folder(user, repo, commit, folder) {
-		return this.API(`/repos/${user}/${repo}/git/trees/${commit}`, {}, 'FOLDER');
+		return this.API(`/repos/${user}/${repo}/git/trees/${commit}`, {}, { user, repo, action: 'FOLDER' });
 	}
 
 
 
 	// https://api.github.com/repos/giampaolo/psutil/tags
 	async tags(user, repo) {
-		let commits = await this.API(`/repos/${user}/${repo}/tags`, { per_page: 100 }, 'TAGS')
+		let commits = await this.API(`/repos/${user}/${repo}/tags`, { per_page: 100 }, { user, repo, action: 'TAGS' })
 		if (!Array.isArray(commits)) return [];
 		return commits?.map(x => ({
 			id: x.commit.sha,
@@ -107,7 +109,7 @@ export class GitHub {
 		if (until) options.until = until
 		// since = since ? 'since=' + since : '' //.toISOString().slice(0, 19) : '';
 		// until = until ? 'until=' + until : '' //.toISOString().slice(0, 19) : '';
-		var commits = await this.API(`/repos/${user}/${repo}/commits`, options, 'COMMITS');
+		var commits = await this.API(`/repos/${user}/${repo}/commits`, options, { user, repo, action: 'COMMITS' });
 		if (!Array.isArray(commits)) return [];
 		//   console.log('comm',commits)
 		// commits = JSON.parse(commits);
