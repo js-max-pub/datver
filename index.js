@@ -139,8 +139,8 @@ function requestParser(webRequest) {
 
 
 let corsHeader = { 'Access-Control-Allow-Origin': '*' }
-let jsonHeader = { 'Content-Type': 'application/json' }
-let defaultHeader = { ...jsonHeader, ...corsHeader }
+let jsHeader = { 'Content-Type': 'application/javascript' }
+let defaultHeader = { ...jsHeader, ...corsHeader }
 function jsonResponse(o) {
 	return new Response(JSON.stringify(o, null, '\t'), {
 		status: 200,
