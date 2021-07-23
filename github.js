@@ -17,6 +17,9 @@ function getLimit(response) {
 	console.log("LIMIT", remaining * 1, '/', total * 1)
 	return { total, remaining }
 }
+
+
+
 export class GitHub {
 	constructor(userAgent, clientID, clientSecret) {
 		this.userAgent = userAgent // required by GitHub
@@ -25,13 +28,18 @@ export class GitHub {
 		// console.log("github", this.id, this.secret)
 		// this.token = token
 	}
+
+
 	get headers() {
 		return {
 			'User-Agent': this.userAgent,
 			// 'Authorization': 'token ' + this.token
-			'Authorization': 'Basic ' + btoa(this.id + ":" + this.secret)
+			'Authorization': 'Basic ' + btoa(this.id + ":" + this.secret),
+			'Access-Control-Allow-Origin': '*',
 		}
 	}
+
+
 	async API(path, options = {}, log = {}) {
 		console.log('gitHubAPI', path, options)
 		// options.access_token = this.token
@@ -56,18 +64,18 @@ export class GitHub {
 
 		return await response.json()
 	}
+
+
 	async file(user, repo, commit, file) {
 		let path = `/${user}/${repo}/${commit}/${file}`
 		console.log('gitHubFile', path)
 		// this.logger?.log('FILE', path)
 
-
 		// fetch(`https://api.max.pub/datver/?message=${btoa('RAW\t' + path)}`)
-		// let response = await fetch(`https://raw.githubusercontent.com${path}`, {
-		// 	headers: { ... this.headers }
-		// })
+		let response = await fetch(`https://raw.githubusercontent.com${path}`, {
+			headers: { ... this.headers }
+		})
 		// let limit = getLimit(response)
-
 
 		this.logger?.log({
 			// limit: limit.remaining + '/' + limit.total,
@@ -78,13 +86,27 @@ export class GitHub {
 			action: 'FILE',
 			path
 		})
+
+		return await response.text()
+	}
+
+
+	async fileRedirect() {
+		this.logger?.log({
+			// limit: limit.remaining + '/' + limit.total,
+			// status: response.status,
+			status: '302',
+			user,
+			repo,
+			action: 'FILE-LINK',
+			path
+		})
 		return new Response(null, {
 			headers: {
 				location: `https://raw.githubusercontent.com${path}`,
 			},
 			status: 302,
 		});
-		// return await response.text()
 	}
 
 

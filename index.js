@@ -80,11 +80,14 @@ async function requestHandler(webRequest) {
 
 	if (request.minify) {
 		let file = await github.file(request.user, request.repo, lastCommit, request.file)
-		file = await minify(file).code
+		let minFile = (await minify(file)).code
+		console.log('file', file.length, 'minified to', minFile.length, '=', (minFile.length / file.length * 100).toFixed(2) + '%')
 		// let file = await fetch(`https://raw.githubusercontent.com/${options.user}/${options.repo}/${commits[0].id}/${options.file}`).then(x => x.text())
-		return new Response(file, { status: 200, headers: { 'Content-Type': 'application/javascript' } })
+		return new Response(minFile, { status: 200, headers: { 'Content-Type': 'application/javascript' } })
 	}
-	return github.file(request.user, request.repo, lastCommit, request.file)
+	let file = await github.file(request.user, request.repo, lastCommit, request.file)
+	return new Response(file, { status: 200, headers: { 'Content-Type': 'application/javascript' } })
+	return await github.fileRedirect(request.user, request.repo, lastCommit, request.file)
 }
 
 
