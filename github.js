@@ -35,7 +35,6 @@ export class GitHub {
 			'User-Agent': this.userAgent,
 			// 'Authorization': 'token ' + this.token
 			'Authorization': 'Basic ' + btoa(this.id + ":" + this.secret),
-			'Access-Control-Allow-Origin': '*',
 		}
 	}
 
