@@ -11,7 +11,7 @@ export class Logger {
 		if (!ip) ip = this.request.headers.get("x-forwarded-for") ?? '';
 		// console.log("IP", ip)
 		//ip.padStart(16, ' '), 
-		let body = [host.padEnd(16), x.limit.padStart(12), x.status, (x.user ?? '').padEnd(16), (x.repo ?? '').padEnd(16), (x.action ?? '').padEnd(12), '\t\t', x.path, '\t\t', JSON.stringify(Object.fromEntries(Array.from(this.request.headers)))].join('    ')
+		let body = [host.padEnd(16), (x.limit ?? '').padStart(12), x.status, (x.user ?? '').padEnd(16), (x.repo ?? '').padEnd(16), (x.action ?? '').padEnd(12), '\t\t', x.path, '\t\t', JSON.stringify(Object.fromEntries(Array.from(this.request.headers)))].join('    ')
 		// console.log('body', body)
 		// var formData = new FormData();
 		// formData.append("test", 'jo');
@@ -23,6 +23,6 @@ export class Logger {
 			// },
 			// body: formData
 		}).then(x => x.text())
-		console.log("LOG response", text)
+		console.log("logged", text, 'bytes')
 	}
 }

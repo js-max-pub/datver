@@ -2,7 +2,7 @@ import paid from './paid.js'
 import { GitHub } from './github.js';
 import { Logger } from './logger.js'
 
-
+import { minify } from 'https://cdn.skypack.dev/terser';
 
 
 addEventListener('fetch', event => {
@@ -78,17 +78,22 @@ async function requestHandler(webRequest) {
 
 	}
 
-	let file = await github.file(request.user, request.repo, lastCommit, request.file)
-	// let file = await fetch(`https://raw.githubusercontent.com/${options.user}/${options.repo}/${commits[0].id}/${options.file}`).then(x => x.text())
-	return new Response(file, { status: 200, headers: { 'Content-Type': 'application/javascript' } })
-
+	if (request.minify) {
+		let file = await github.file(request.user, request.repo, lastCommit, request.file)
+		file = await minify(file).code
+		// let file = await fetch(`https://raw.githubusercontent.com/${options.user}/${options.repo}/${commits[0].id}/${options.file}`).then(x => x.text())
+		return new Response(file, { status: 200, headers: { 'Content-Type': 'application/javascript' } })
+	}
+	return github.file(request.user, request.repo, lastCommit, request.file)
 }
 
 
 
 function requestParser(webRequest) {
 	// let options = {};
-	let path = new URL(webRequest.url).pathname;
+	let url = new URL(webRequest.url)
+	let path = url.pathname;
+	let params = Object.fromEntries(url.searchParams)
 	// console.log('path', path);
 	// let [user, repo, version, file] = path.split('/').filter(x => x.trim());
 	// console.log('vars', user, repo, version, file);
@@ -122,7 +127,7 @@ function requestParser(webRequest) {
 	// console.log('date', date, since, until);
 	// console.log('since', '\n', since.toDateString(), '\n', since.toISOString(), '\n', since.toLocaleDateString(), '\n', since.toUTCString())
 	var file = parts.slice(1).join('/')
-	return { user, repo, version: parts[0], ...decodeVersion(parts[0]), file };
+	return { user, repo, version: parts[0], ...decodeVersion(parts[0]), file, ...params };
 }
 
 

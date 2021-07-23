@@ -61,20 +61,30 @@ export class GitHub {
 		console.log('gitHubFile', path)
 		// this.logger?.log('FILE', path)
 
+
 		// fetch(`https://api.max.pub/datver/?message=${btoa('RAW\t' + path)}`)
-		let response = await fetch(`https://raw.githubusercontent.com${path}`, {
-			headers: { ... this.headers }
-		})
-		let limit = getLimit(response)
+		// let response = await fetch(`https://raw.githubusercontent.com${path}`, {
+		// 	headers: { ... this.headers }
+		// })
+		// let limit = getLimit(response)
+
+
 		this.logger?.log({
-			limit: limit.remaining + '/' + limit.total,
-			status: response.status,
+			// limit: limit.remaining + '/' + limit.total,
+			// status: response.status,
+			status: '302',
 			user,
 			repo,
 			action: 'FILE',
 			path
 		})
-		return await response.text()
+		return new Response(null, {
+			headers: {
+				location: `https://raw.githubusercontent.com${path}`,
+			},
+			status: 302,
+		});
+		// return await response.text()
 	}
 
 
