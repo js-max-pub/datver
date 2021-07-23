@@ -2,7 +2,7 @@ import paid from './paid.js'
 import { GitHub } from './github.js';
 import { Logger } from './logger.js'
 
-import { minify } from 'https://cdn.skypack.dev/terser';
+// import { minify } from 'https://cdn.skypack.dev/terser';
 
 
 addEventListener('fetch', event => {
@@ -79,6 +79,7 @@ async function requestHandler(webRequest) {
 	}
 
 	if (request.minify) {
+		let { minify } = await import('https://cdn.skypack.dev/terser')
 		let file = await github.file(request.user, request.repo, lastCommit, request.file)
 		let minFile = (await minify(file)).code
 		console.log('file', file.length, 'minified to', minFile.length, '=', (minFile.length / file.length * 100).toFixed(2) + '%')
