@@ -48,7 +48,9 @@ export class GitHub {
 		// this.logger?.log(name, path + '?' + queryString)
 		// fetch(`https://api.max.pub/datver/?message=${btoa('API\t' + url)}`)
 		// console.log("API", 'https://api.github.com' + path + '?' + queryString)
-		let response = await fetch('https://api.github.com' + path + '?' + queryString, {
+		let url = 'https://api.github.com' + path + '?' + queryString
+		console.log("API",url)
+		let response = await fetch(url, {
 			headers: { ... this.headers }
 		});
 		let limit = getLimit(response)

@@ -5,14 +5,15 @@ import { Logger } from './logger.js'
 // import { minify } from 'https://cdn.skypack.dev/terser';
 
 
-addEventListener('fetch', event => {
-	console.log('\n\n new request')
-	event.respondWith(requestHandler(event.request))
-})
+// addEventListener('fetch', event => {
+// 	console.log('\n\n new request')
+// 	event.respondWith(requestHandler(event.request))
+// })
 
 
 
-
+import { serve } from "https://deno.land/std@0.114.0/http/server.ts";
+serve(requestHandler)
 
 
 async function requestHandler(webRequest) {
